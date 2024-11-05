@@ -7,14 +7,14 @@ PROGRESS_FILE="/tmp/phrack/download_progress"
 
 acquire_lock() {
     local lockfile="$1"
-    local fd=${2:-200}
+    local fd=200
     eval "exec $fd>\"$lockfile\""
-    flock -x "$fd"
+    flock -x $fd
 }
 
 release_lock() {
-    local fd=${1:-200}
-    flock -u "$fd"
+    local fd=200
+    flock -u $fd
 }
 
 update_progress() {
@@ -91,8 +91,9 @@ download_archive() {
         touch "$PROGRESS_FILE.lock"
         
         # Await all tarball downloads to complete.
-        echo "Downloading phrack archives to $DEST_DIR"
+        echo "Downloading archive to $DEST_DIR"
         for i in $(seq $NUM_ISSUES -1 1); do download_all_files $i & done; wait
+        echo
         
         # Clean up progress file and lock file
         rm "$PROGRESS_FILE" "$PROGRESS_FILE.lock"
