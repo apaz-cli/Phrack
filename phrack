@@ -85,17 +85,6 @@ cd "$DEST_DIR" || exit 1
 
 # For each issue, enumerate how many articles it contains.
 NUM_ISSUES=$(ls -d phrack* | wc -l)
-NUM_ARTICLES=""
-for i in $(seq 1 $NUM_ISSUES); do
-    count=$(ls -d phrack$i/* | wc -l)
-    NUM_ARTICLES="$NUM_ARTICLES $count"
-done
-
-# Read a specific article from a specific issue.
-
-
-
-######################
 
 _read_stdin() { read $@ </dev/tty; }
 _get_cursor_row() { local IFS=';'; _read_stdin -sdR -p $'\E[6n' ROW COL; echo "${ROW#*[}"; }
@@ -109,15 +98,11 @@ _key_input() {
     local IFS=''
 
     _read_stdin -rsn1 a
-    # is the first character ESC?
-	# shellcheck disable=SC2154
     if [[ "$ESC" == "$a" ]]; then
         _read_stdin -rsn2 b
     fi
 
-	# shellcheck disable=SC2154
     local input="${a}${b}"
-    # shellcheck disable=SC1087
     case "$input" in
         "$ESC[A" | "k") echo up ;;
         "$ESC[B" | "j") echo down ;;
