@@ -119,10 +119,29 @@ _decrement_selected() {
     local selected=$1
     local decrement=$2
     local opts_count=$3
-    ((selected -= decrement))
-    if [ "${selected}" -lt 0 ]; then
-        selected=$((opts_count + selected))
+    local row_size=10
+    
+    if [ $decrement -eq $row_size ]; then
+        # Moving up a row
+        if [ $selected -lt $row_size ]; then
+            # Wrap to last row
+            local last_row_start=$(( (opts_count - 1) / row_size * row_size ))
+            selected=$(( last_row_start + selected ))
+            if [ $selected -ge $opts_count ]; then
+                selected=$(( selected - row_size ))
+            fi
+        else
+            ((selected -= decrement))
+        fi
+    else
+        # Moving left
+        if [ $selected -eq 0 ]; then
+            selected=$(( opts_count - 1 ))
+        else
+            ((selected -= decrement))
+        fi
     fi
+    
     echo -n $selected
 }
 
@@ -131,10 +150,24 @@ _increment_selected() {
     local selected=$1
     local increment=$2
     local opts_count=$3
-    ((selected += increment))
-    if [ "${selected}" -ge "${opts_count}" ]; then
-        selected=$((selected - opts_count))
+    local row_size=10
+    
+    if [ $increment -eq $row_size ]; then
+        # Moving down a row
+        if [ $selected -ge $(( opts_count - row_size )) ]; then
+            # Wrap to first row
+            selected=$(( selected % row_size ))
+        else
+            ((selected += increment))
+        fi
+    else
+        # Moving right
+        ((selected += increment))
+        if [ $selected -ge $opts_count ]; then
+            selected=0
+        fi
     fi
+    
     echo -n $selected
 }
 
