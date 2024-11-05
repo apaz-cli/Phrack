@@ -5,12 +5,26 @@ set -e
 DEST_DIR="/tmp/phrack"
 PROGRESS_FILE="/tmp/phrack/download_progress"
 
+acquire_lock() {
+    local lockfile="$1"
+    local fd=${2:-200}
+    eval "exec $fd>\"$lockfile\""
+    flock -x "$fd"
+}
+
+release_lock() {
+    local fd=${1:-200}
+    flock -u "$fd"
+}
+
 update_progress() {
+    acquire_lock "$PROGRESS_FILE.lock"
     local current_progress
     current_progress=$(cat "$PROGRESS_FILE")
     current_progress=$((current_progress + 1))
     echo "$current_progress" > "$PROGRESS_FILE"
     printf "\rProgress: [%-50s] %d/%d" "$(printf '#%.0s' $(seq 1 $((current_progress * 50 / NUM_ISSUES))))" "$current_progress" "$NUM_ISSUES"
+    release_lock
 }
 
 download_file() {
@@ -72,15 +86,16 @@ download_archive() {
         NUM_ISSUES=$(grep -oP '(?<=<A HREF=")[0-9]+(?=/">)' "$INDEX_FILE" | sort -rn | head -n1)
         rm "$INDEX_FILE"
         
-        # Initialize progress file
+        # Initialize progress file and create lock file
         echo "0" > "$PROGRESS_FILE"
+        touch "$PROGRESS_FILE.lock"
         
         # Await all tarball downloads to complete.
         echo "Downloading phrack archives to $DEST_DIR"
         for i in $(seq $NUM_ISSUES -1 1); do download_all_files $i & done; wait
         
-        # Clean up progress file
-        rm "$PROGRESS_FILE"
+        # Clean up progress file and lock file
+        rm "$PROGRESS_FILE" "$PROGRESS_FILE.lock"
     fi
     cd "$DEST_DIR" || exit 1
     NUM_ISSUES=$(ls -d phrack* | wc -l)
