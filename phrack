@@ -13,16 +13,29 @@ update_progress() {
     printf "\rProgress: [%-50s] %d/%d" "$(printf '#%.0s' $(seq 1 $((current_progress * 50 / NUM_ISSUES))))" "$current_progress" "$NUM_ISSUES"
 }
 
-download_and_process_archive() {
+download_file() {
+    local url="$1"
+    local output_file="$2"
+    if command -v wget >/dev/null 2>&1; then
+        wget --no-check-certificate -q "$url" -O "$output_file"
+        elif command -v curl >/dev/null 2>&1; then
+        curl -sSL --insecure "$url" -o "$output_file"
+    else
+        echo "Error: Neither wget nor curl is available. Please install one of them." >&2
+        return 1
+    fi
+}
+
+download_all_files() {
     local num=$(printf "%d" "$1")
     local folder="phrack$num"
     local url="https://phrack.org/archives/tgz/phrack$num.tar.gz"
     local file="phrack$num.tar.gz"
     local max_retries=3
     local retry_count=0
-
+    
     if [ -d "$folder" ]; then update_progress; return 0; fi
-
+    
     while [ $retry_count -lt $max_retries ]; do
         if download_file "$url" "$file"; then
             if [ -s "$file" ]; then
@@ -41,50 +54,37 @@ download_and_process_archive() {
         retry_count=$((retry_count + 1))
         sleep $((retry_count * 2))
     done
-
+    
     echo "Failed to download $file after $max_retries attempts"
     return 1
 }
 
-download_file() {
-    local url="$1"
-    local output_file="$2"
-    if command -v wget >/dev/null 2>&1; then
-        wget --no-check-certificate -q "$url" -O "$output_file"
-    elif command -v curl >/dev/null 2>&1; then
-        curl -sSL --insecure "$url" -o "$output_file"
-    else
-        echo "Error: Neither wget nor curl is available. Please install one of them." >&2
-        return 1
+download_archive() {
+    # If not already downloaded, download all Phrack issues.
+    if [ ! -d "$DEST_DIR" ]; then
+        mkdir -p "$DEST_DIR" 2>/dev/null
+        cd "$DEST_DIR" || exit 1
+        
+        # Download the index page and extract latest issue number.
+        INDEX_URL="https://phrack.org/archives/issues/"
+        INDEX_FILE="index.html"
+        download_file "$INDEX_URL" "$INDEX_FILE"
+        NUM_ISSUES=$(grep -oP '(?<=<A HREF=")[0-9]+(?=/">)' "$INDEX_FILE" | sort -rn | head -n1)
+        rm "$INDEX_FILE"
+        
+        # Initialize progress file
+        echo "0" > "$PROGRESS_FILE"
+        
+        # Await all tarball downloads to complete.
+        echo "Downloading phrack archives to $DEST_DIR"
+        for i in $(seq $NUM_ISSUES -1 1); do download_all_files $i & done; wait
+        
+        # Clean up progress file
+        rm "$PROGRESS_FILE"
     fi
-}
-
-# If not already downloaded, download all Phrack issues.
-if [ ! -d "$DEST_DIR" ]; then
-    mkdir -p "$DEST_DIR" 2>/dev/null
     cd "$DEST_DIR" || exit 1
-
-    # Download the index page and extract latest issue number.
-    INDEX_URL="https://phrack.org/archives/issues/"
-    INDEX_FILE="index.html"
-    download_file "$INDEX_URL" "$INDEX_FILE"
-    NUM_ISSUES=$(grep -oP '(?<=<A HREF=")[0-9]+(?=/">)' "$INDEX_FILE" | sort -rn | head -n1)
-    rm "$INDEX_FILE"
-
-    # Initialize progress file
-    echo "0" > "$PROGRESS_FILE"
-
-    # Await all tarball downloads to complete.
-    echo "Downloading phrack archives to $DEST_DIR"
-    for i in $(seq $NUM_ISSUES -1 1); do download_and_process_archive $i & done; wait
-
-    # Clean up progress file
-    rm "$PROGRESS_FILE"
-fi
-cd "$DEST_DIR" || exit 1
-
-# For each issue, enumerate how many articles it contains.
-NUM_ISSUES=$(ls -d phrack* | wc -l)
+    NUM_ISSUES=$(ls -d phrack* | wc -l)
+}
 
 _read_stdin() { read $@ </dev/tty; }
 _get_cursor_row() { local IFS=';'; _read_stdin -sdR -p $'\E[6n' ROW COL; echo "${ROW#*[}"; }
@@ -92,16 +92,15 @@ _cursor_blink_on() { echo -en "\033[?25h" >&2; }
 _cursor_blink_off() { echo -en "\033[?25l" >&2; }
 _cursor_to() { echo -en "\033[$1;$2H" >&2; }
 
-# key input helper
 _key_input() {
     local ESC=$'\033'
     local IFS=''
-
+    
     _read_stdin -rsn1 a
     if [[ "$ESC" == "$a" ]]; then
         _read_stdin -rsn2 b
     fi
-
+    
     local input="${a}${b}"
     case "$input" in
         "$ESC[A" | "k") echo up ;;
@@ -113,8 +112,6 @@ _key_input() {
     esac
 }
 
-
-# decrement counter $1 by $2, considering out of range for $3
 _decrement_selected() {
     local selected=$1
     local decrement=$2
@@ -145,7 +142,6 @@ _decrement_selected() {
     echo -n $selected
 }
 
-# increment counter $1 by $2, considering out of range for $3
 _increment_selected() {
     local selected=$1
     local increment=$2
@@ -171,33 +167,22 @@ _increment_selected() {
     echo -n $selected
 }
 
-# @description Renders a text based list of options that can be selected by the
-# user using up, down and enter keys and returns the chosen option.
-# Inspired by https://unix.stackexchange.com/questions/146570/arrow-key-enter-menu/415155#415155
-# @arg $1 string Phrase for promptint to text
-# @arg $2 array List of options (max 256)
-# @stdout selected index (0 for opt1, 1 for opt2 ...)
-# @stderr Instructions for user
-# @example
-#   options=("one" "two" "three" "four")
-#   option=$(list "Select one item" "${options[@]}")
-#   echo "Your choice: ${options[$option]}"
-list() {
+grid_select() {
     # Clear the screen and move cursor to top-left corner
     echo -en "\033[2J\033[H" >&2
     echo -en "\033[31m?\033[0m\033[1m ${1} \033[0m\n" >&2
-
+    
     local opts=("${@:2}")
     local opts_count=$(($# -1))
-
+    
     # Set a fixed starting position for the menu (line 2)
     local startrow=2
     local lastrow=$((startrow + (opts_count + 9) / 10))
-
+    
     # ensure cursor and input echoing back on upon a ctrl+c during read -s
     trap "_cursor_blink_on; stty echo; exit" 2
     _cursor_blink_off
-
+    
     local selected=0
     while true; do
         # print options by overwriting the last lines
@@ -219,14 +204,14 @@ list() {
             echo -en "\033[K" >&2
             ((line++))
         done
-
+        
         # Clear any remaining lines that were used in previous renders
         while [ $((startrow + line)) -le $lastrow ]; do
             _cursor_to $((startrow + line))
             echo -en "\033[K" >&2
             ((line++))
         done
-
+        
         # user key control
         case $(_key_input) in
             enter) break; ;;
@@ -235,29 +220,52 @@ list() {
             right) selected=$(_increment_selected "${selected}" 1  "${opts_count}"); ;;
             left)  selected=$(_decrement_selected "${selected}" 1  "${opts_count}"); ;;
         esac
-
+        
         # Move cursor back to the top of the menu area
         _cursor_to $startrow
     done
-
+    
     echo -en "\n" >&2
-
+    
     # cursor position back to normal
     _cursor_to "${lastrow}"
     _cursor_blink_on
-
+    
     echo -n "${selected}"
 }
 
-#################
-
 # Print out a menu of all issues and articles.
 cli_menu() {
-    ISS_IDX=$(list "Select an issue" $(seq 1 $NUM_ISSUES))
-    ISSUE=$((ISS_IDX + 1))
-    ART_IDX=$(list "Select an article" $(seq 1 $(ls -d phrack$ISSUE/* | wc -l)))
-    ARTICLE=$((ART_IDX + 1))
+    ISSUE=$1
+    ARTICLE=$2
+
+    if [ -z "$ISSUE" ]; then
+        ISS_IDX=$(grid_select "Select an issue" $(seq 1 $NUM_ISSUES))
+        ISSUE=$((ISS_IDX + 1))
+    fi
+    if [ -z "$ARTICLE" ]; then
+        ART_IDX=$(grid_select "Select an article" $(seq 1 $(ls -d phrack$ISSUE/* | wc -l)))
+        ARTICLE=$((ART_IDX + 1))
+    fi
     less "phrack$ISSUE/$ARTICLE.txt"
 }
 
-cli_menu
+
+# Parse command line arguments
+for arg in "$@"; do
+    case $arg in
+        -h|--help)
+            echo "Usage: phrack [ISSUE] [ARTICLE]"
+            echo "  Read Phrack on the command line."
+            exit 0
+            ;;
+        [0-9]*)
+            if [ -z "$ISSUE" ]; then ISSUE=$arg
+            elif [ -z "$ARTICLE" ]; then ARTICLE=$arg
+            fi
+            ;;
+    esac
+done
+
+download_archive
+cli_menu $ISSUE $ARTICLE
