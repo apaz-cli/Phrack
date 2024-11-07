@@ -254,7 +254,7 @@ grid_select() {
 cli_menu() {
     ISSUE=$1
     ARTICLE=$2
-
+    
     if [ -z "$ISSUE" ]; then
         ISS_IDX=$(grid_select "Select an issue" $(seq 1 $NUM_ISSUES))
         ISSUE=$((ISS_IDX + 1))
@@ -274,12 +274,14 @@ for arg in "$@"; do
             echo "Usage: phrack [ISSUE] [ARTICLE]"
             echo "  Read Phrack on the command line."
             exit 0
-            ;;
+        ;;
         [0-9]*)
-            if [ -z "$ISSUE" ]; then ISSUE=$arg
-            elif [ -z "$ARTICLE" ]; then ARTICLE=$arg
+            if [ -z "$ISSUE" ];
+            then ISSUE=$arg
+            elif [ -z "$ARTICLE" ];
+            then ARTICLE=$arg
             fi
-            ;;
+        ;;
     esac
 done
 
