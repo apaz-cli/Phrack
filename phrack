@@ -247,6 +247,10 @@ grid_select() {
     _cursor_to "${lastrow}"
     _cursor_blink_on
     
+    # Clear screen
+    echo -en "\033[2J\033[H" >&2
+
+    # Return the selected option
     echo -n "${selected}"
 }
 
@@ -255,6 +259,7 @@ cli_menu() {
     ISSUE=$1
     ARTICLE=$2
     
+    # If not supplied, prompt for issue and article numbers.
     if [ -z "$ISSUE" ]; then
         ISS_IDX=$(grid_select "Select an issue" $(seq 1 $NUM_ISSUES))
         ISSUE=$((ISS_IDX + 1))
@@ -263,7 +268,9 @@ cli_menu() {
         ART_IDX=$(grid_select "Select an article" $(seq 1 $(ls -d phrack$ISSUE/* | wc -l)))
         ARTICLE=$((ART_IDX + 1))
     fi
-    less "phrack$ISSUE/$ARTICLE.txt"
+    
+    # Read the article
+    less -Q -P "Phrack Issue $ISSUE, Article $ARTICLE" "phrack$ISSUE/$ARTICLE.txt"
 }
 
 
