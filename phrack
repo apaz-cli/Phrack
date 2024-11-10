@@ -272,43 +272,46 @@ _cli_menu() {
 }
 
 ooeeoo() {
-    echo "                          __   "
-    echo "      ...==========...   |==|  "
-    echo "      || phrack     ||   |= |  "
-    echo "   _  ||   magazine || - |^*|  "
-    echo "  |=| o=,===,==,===,=o   |__|  "
-    echo "  |_|        (       )         "
-    echo "         [========] (')        "
     echo
-    echo " Miku, Miku, you can call me Miku"
-    echo " Blue hair, blue tie, hiding in your Wi-Fi"
-    echo " Open secrets, anyone can find me"
-    echo " Hear your music running through my mind"
+    echo "                          __                "
+    echo "      ...==========...   |==|               "
+    echo "      || phrack     ||   |= |               "
+    echo "   _  ||   magazine || - |^*|               "
+    echo "  |=| o=,===,==,===,=o   |__|  ,o.          "
+    echo "  |_|        (       )        / 9 \\         "
+    echo "         [========] (')         ^           "
+    echo "                                            "
+    echo " Open secrets, anyone can find me           "
+    echo " Hear your exploits running through my mind "
+    echo
 }
 
 
 love_lain() {
+    echo
     echo "          _..--¯¯¯¯--.._"
     echo "      ,-''              \\\`-."
     echo "    ,'                     \\\`."
     echo "   ,                         \\"
-    echo "  /    LETS ALL LOVE LAIN     \\"
+    echo "  /    LETS ALL LOVE PHRACK   \\"
     echo " /          ..                 \\"
     echo "'          /  ││                ;"
     echo ";       n /│  │/         │      │"
     echo "│      / v    /\/\`-'v√\'.│\     ,"
-    echo ":    /v\`,———         ————.^.    ;"
-    echo "'   │  /'@@\`,        ,@@ \`\│    ;"
-    echo "│  n│  '.@@/         \@@  /│\  │;"
-    echo "\` │ \`    ¯¯¯          ¯¯¯  │ \/││"
-    echo " \ \ \            \\        │ /\/"
+    echo ":    /v\`,———.       .————.^.\  /;"
+    echo "'   │  /'@@\`,        ,@@ \`\│ \/ ;"
+    echo "│  n│  '.@@/         \@@  /│ /\ │;"
+    echo "\` │ \`    ¯¯¯          ¯¯¯  │/ /\│"
+    echo " \ \ \            \\       .│ / /"
     echo " '; \`-\          \`'       /│/ │′"
     echo "  \`    \       -___-      /│  │"
-    echo "   \`    \`.              .' │  │"
-    echo "    v,_   \`;._     _.-;    │  /"
-    echo "       \`'\`\│-_\`'-''__/^'^' │ │ "
-    echo "              ¯¯¯¯¯        │ /"
-    echo "                           │,"
+    echo "   \`    \`.              .' │  /"
+    echo "    v,_   \`;._     _.-;    │ /"
+    echo "       \`'\`\│-_\`'-''__/^'^' │,"
+    echo "              ¯¯¯¯¯        "
+    echo
+    echo " No matter where you go, everyone's connected."
+    echo
 }
 
 # Parse command line arguments
