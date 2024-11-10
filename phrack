@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -e
-
 DEST_DIR="/tmp/phrack"
 PROGRESS_FILE="/tmp/phrack/download_progress"
 
@@ -31,9 +29,9 @@ download_file() {
     local url="$1"
     local output_file="$2"
     if command -v wget >/dev/null 2>&1; then
-        wget --no-check-certificate --cipher 'DEFAULT:!DH' -q "$url" -O "$output_file"
+        wget --no-check-certificate --cipher SECURE128 -q "$url" -O "$output_file"
     elif command -v curl >/dev/null 2>&1; then
-        curl -sSL --insecure --ciphers 'DEFAULT:!DH' "$url" -o "$output_file"
+        curl -sSL --insecure --ciphers SECURE128 "$url" -o "$output_file"
     else
         echo "Error: Neither wget nor curl is available. Please install one of them." >&2
         return 1
@@ -91,7 +89,7 @@ download_archive() {
         touch "$PROGRESS_FILE.lock"
 
         # Await all tarball downloads to complete.
-        echo "Downloading archive to $DEST_DIR"
+        echo "Downloading $NUM_ISSUES to $DEST_DIR"
         for i in $(seq $NUM_ISSUES -1 1); do download_all_files $i & done; wait
         echo
 
@@ -183,7 +181,7 @@ _increment_selected() {
     echo -n $selected
 }
 
-grid_select() {
+_grid_select() {
     # Clear the screen and move cursor to top-left corner
     echo -en "\033[2J\033[H" >&2
     echo -en "\033[31m?\033[0m\033[1m ${1} \033[0m\n" >&2
@@ -255,17 +253,17 @@ grid_select() {
 }
 
 # Print out a menu of all issues and articles.
-cli_menu() {
+_cli_menu() {
     ISSUE=$1
     ARTICLE=$2
 
     # If not supplied, prompt for issue and article numbers.
     if [ -z "$ISSUE" ]; then
-        ISS_IDX=$(grid_select "Select an issue" $(seq 1 $NUM_ISSUES))
+        ISS_IDX=$(_grid_select "Select an issue" $(seq 1 $NUM_ISSUES))
         ISSUE=$((ISS_IDX + 1))
     fi
     if [ -z "$ARTICLE" ]; then
-        ART_IDX=$(grid_select "Select an article" $(seq 1 $(ls -d phrack$ISSUE/* | wc -l)))
+        ART_IDX=$(_grid_select "Select an article" $(seq 1 $(ls -d phrack$ISSUE/* | wc -l)))
         ARTICLE=$((ART_IDX + 1))
     fi
 
@@ -273,6 +271,45 @@ cli_menu() {
     less -P "Phrack Issue $ISSUE, Article $ARTICLE" "phrack$ISSUE/$ARTICLE.txt"
 }
 
+ooeeoo() {
+    echo "                          __   "
+    echo "      ...==========...   |==|  "
+    echo "      || phrack     ||   |= |  "
+    echo "   _  ||   magazine || - |^*|  "
+    echo "  |=| o=,===,==,===,=o   |__|  "
+    echo "  |_|        (       )         "
+    echo "         [========] (')        "
+    echo
+    echo " Miku, Miku, you can call me Miku"
+    echo " Blue hair, blue tie, hiding in your Wi-Fi"
+    echo " Open secrets, anyone can find me"
+    echo " Hear your music running through my mind"
+}
+
+
+love_lain() {
+    echo "          _..--¯¯¯¯--.._"
+    echo "      ,-''              \\\`-."
+    echo "    ,'                     \\\`."
+    echo "   ,                         \\"
+    echo "  /    LETS ALL LOVE LAIN     \\"
+    echo " /          ..                 \\"
+    echo "'          /  ││                ;"
+    echo ";       n /│  │/         │      │"
+    echo "│      / v    /\/\`-'v√\'.│\     ,"
+    echo ":    /v\`,———         ————.^.    ;"
+    echo "'   │  /'@@\`,        ,@@ \`\│    ;"
+    echo "│  n│  '.@@/         \@@  /│\  │;"
+    echo "\` │ \`    ¯¯¯          ¯¯¯  │ \/││"
+    echo " \ \ \            \\        │ /\/"
+    echo " '; \`-\          \`'       /│/ │′"
+    echo "  \`    \       -___-      /│  │"
+    echo "   \`    \`.              .' │  │"
+    echo "    v,_   \`;._     _.-;    │  /"
+    echo "       \`'\`\│-_\`'-''__/^'^' │ │ "
+    echo "              ¯¯¯¯¯        │ /"
+    echo "                           │,"
+}
 
 # Parse command line arguments
 for arg in "$@"; do
@@ -280,6 +317,14 @@ for arg in "$@"; do
         -h|--help)
             echo "Usage: phrack [ISSUE] [ARTICLE]"
             echo "  Read Phrack on the command line."
+            exit 0
+        ;;
+        -m|--miku|-ooeeoo)
+            ooeeoo
+            exit 0
+        ;;
+        -m|--lain|--love_lain)
+            love_lain
             exit 0
         ;;
         [0-9]*)
@@ -293,4 +338,4 @@ for arg in "$@"; do
 done
 
 download_archive
-cli_menu $ISSUE $ARTICLE
+_cli_menu $ISSUE $ARTICLE
